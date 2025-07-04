@@ -62,6 +62,39 @@ module.exports = {
         })
     },
     // Function to get user messages
+    getUserMessages: function(req, res) {
+        var userId = jwt.getUser(req.headers.authorization);
+        if (userId == null) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        var fields = req.query.fields;
+        var limits = req.query.limit;
+        var offset = req.query.offset;
+        var order = req.query.order;
+
+
+        var messages = models.Message.findAll({
+            order: [(order != null) ? order.split(':') : ['createdAt', 'DESC']],
+            attributes: (fields !== '*' && fields !== null && !isNaN(fields)) ? fields.split(',') : null,
+            limits: (limits !== null && !isNaN(limits)) ? parseInt(limits) : 10,
+            offset: (offset !== null && !isNaN(offset)) ? parseInt(offset) : null,
+            where: { UserId: userId },
+            include: [{
+                model: models.User,
+                attributes: ['id', 'username']
+            }]
+        }).then(function(messages) {
+            if (messages.length > 0) {
+                return res.status(200).json(messages);
+            } else {
+                return res.status(404).json({ error: "No messages found for this user." });
+            }
+        }).catch(function(err) {
+            console.log(err);
+            return res.status(500).json({ error: "Unable to fetch messages." });
+        });
+    },
+    // Function to get user messages
     getMessages: function(req, res) {
         var userId = jwt.getUser(req.headers.authorization);
         if (userId == null) {
@@ -74,11 +107,10 @@ module.exports = {
 
 
         var messages = models.Message.findAll({
-            //order: [(order != null) ? order.split(':') : ['createdAt', 'DESC']],
-            //attributes: (fields !== '*') ? fields.split(',') : null,
+            order: [(order != null) ? order.split(':') : ['createdAt', 'DESC']],
+            attributes: (fields !== '*' && fields !== null && !isNaN(fields)) ? fields.split(',') : null,
             limits: (limits !== null && !isNaN(limits)) ? parseInt(limits) : 10,
             offset: (offset !== null && !isNaN(offset)) ? parseInt(offset) : null,
-            where: { UserId: userId },
             include: [{
                 model: models.User,
                 attributes: ['id', 'username']
